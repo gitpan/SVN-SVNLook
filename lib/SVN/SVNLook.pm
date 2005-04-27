@@ -1,8 +1,9 @@
 package SVN::SVNLook;
 use strict;
 use warnings;
+use Carp qw(cluck);
 
-our $VERSION = 0.01;
+our $VERSION = 0.02;
 
 =head1 NAME
 
@@ -30,12 +31,20 @@ hooks script easier to manipulate
 
 =head1 METHODs
 
+=head2 youngest
+
+  youngest ();
+
+Perform the youngest command on the repository.
+Returns the revision number of the most recent revision as a scalar.
+
 =head2 info
 
   info ($revision);
 
 Perform the info command, for a given revision.
-The information returned is an array containing author,date,and log message
+The information returned is an array containing author,date,and log message.
+If no $revision is specified, info for the youngest revision is returned.
 
 =head2 dirschanged
 
@@ -62,22 +71,36 @@ this method returns a hash reference, with each file being the key and value bei
 
 
 sub new {
+    my $self = {}; 
     my $class = shift;
-    my $self = {};
     %$self = @_;
-    return bless $self, $class unless $class eq __PACKAGE__;
-
-    $self->{repospath} ||= $self->{target};
-    die "no repository specified" unless $self->{repospath} || $self->{repos};
-    die "no source specified" unless $self->{source} || $self->{get_source};
-    return $self;
+    # $class = ref($self) || $self;
+    $self->{repo} ||= $self->{target};
+    die "no repository specified" unless $self->{repo};
+    # die "no source specified" unless $self->{source} || $self->{get_source};
+    
+    return bless $self, $class;
 }
 
+sub youngest
+{
+    my $self = shift;
+    my ($rev) = _read_from_process($self->{cmd}, 'youngest', $self->{repo});
+    # might be nice to have
+    # $self->{rev} = $rev; 
+    return $rev;
+}
 sub info
 {
     my $self = shift;
     my $rev = shift;
-    my @svnlooklines = _read_from_process($self->{svnlook}, 'info', $self->{repo}, '-r', $rev);
+    my @svnlooklines;
+    if ( $rev) {
+        @svnlooklines = _read_from_process($self->{cmd}, 'info', $self->{repo}, '-r', $rev);
+    } else {
+        # print the youngest log message if no rev number is supplied
+        @svnlooklines = _read_from_process($self->{cmd}, 'info', $self->{repo});
+    }
     my $author = shift @svnlooklines; # author of this change
     my $date = shift @svnlooklines; # date of change
     shift @svnlooklines; # log message size
@@ -92,7 +115,7 @@ sub dirschanged
     my $self = shift;
     my $rev = shift;
     # Figure out what directories have changed using svnlook.
-    my @dirschanged = _read_from_process($self->{svnlook}, 'dirs-changed', $self->{repo},'-r', $rev);
+    my @dirschanged = _read_from_process($self->{cmd}, 'dirs-changed', $self->{repo},'-r', $rev);
     # Lose the trailing slash in the directory names if one exists, except
     # in the case of '/'.
     my $rootchanged = 0;
@@ -117,7 +140,7 @@ sub fileschanged
     my $rev = shift;
 
     # Figure out what files have changed using svnlook.
-    my @svnlooklines = _read_from_process($self->{svnlook}, 'changed', $self->{repo}, '-r', $rev);
+    my @svnlooklines = _read_from_process($self->{cmd}, 'changed', $self->{repo}, '-r', $rev);
     # Parse the changed nodes.
     my @adds;
     my @dels;
@@ -154,7 +177,7 @@ sub diff
 {
     my $self = shift;
     my $rev = shift;
-    my @difflines = _read_from_process($self->{svnlook}, 'diff', $self->{repo},'-r', $rev,
+    my @difflines = _read_from_process($self->{cmd}, 'diff', $self->{repo},'-r', $rev,
                                        ('--no-diff-deleted'));
     # Ok we need to split this out now , by file
     my @lin = split(/Modified: (.*)\n=*\n/,join("\n",@difflines));
@@ -166,16 +189,20 @@ sub diff
 # PRIVATE METHODS
 # Methods taken from commit-email.pl Copyright subversion team
 #
+
+# NB. croak is not a defined subroutine - where did this come from?
+# croak is defined in Carp, somehow didnt get included in CPAN post
+
 sub _read_from_process
 {
     unless (@_)
     {
-        croak("$0: read_from_process passed no arguments.\n");
+        cluck("$0: read_from_process passed no arguments.\n");
     }
     my ($status, @output) = _safe_read_from_pipe(@_);
     if ($status)
     {
-        croak("$0: `@_' failed with this output:", @output);
+        cluck("$0: `@_' failed with this output:", @output);
     }
     else
     {
@@ -230,10 +257,11 @@ __END__
 =head1 AUTHOR
 
 Salvatore E ScottoDiLuzio, <sal.scotto@gmail.com>
+Contributions by Kevin Semande
 
 =head1 COPYRIGHT
 
-Copyright 2004 Salvatore E. ScottoDiLuzio.  All Rights Reserved.
+Copyright 2005 Salvatore E. ScottoDiLuzio.  All Rights Reserved.
 
 This program is free software; you can redistribute it
 and/or modify it under the same terms as Perl itself.

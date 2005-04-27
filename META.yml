@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name: SVN-SVNLook
-version: 0.01
+version: 0.02
 author: |-
   Salvatore E. ScottoDiLuzio <lt>sal.scotto@gmail.com<gt>
 abstract: Module to aid in creating subversion hooks
