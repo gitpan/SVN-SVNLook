@@ -1,9 +1,8 @@
 --- #YAML:1.0
 name: SVN-SVNLook
-version: 0.02
-author: |-
-  Salvatore E. ScottoDiLuzio <lt>sal.scotto@gmail.com<gt>
+version: 0.03
+author:
+  - Salvatore E. ScottoDiLuzio <lt>sal.scotto@gmail.com<gt>
 abstract: Module to aid in creating subversion hooks
 license: perl
-provides: {}
-generated_by: Module::Build version 0.25
+generated_by: Module::Build version 0.2611, without YAML.pm

@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use Carp qw(cluck);
 
-our $VERSION = 0.02;
+our $VERSION = 0.03;
 
 =head1 NAME
 
@@ -16,7 +16,7 @@ SVN::SVNLook - Perl wrapper to the svnlook command.
   my $revision = 1;
   my $svnlook = SVN::SVNLook->new(repo => 'repo url',
                                    cmd => 'path to svn look');
-  my ($author,$date,$logmessage) = $svnlook->info($revision);
+  my ($author,$date,$logmessage) = $svnlook->info(revision => $revision);
 
   print "Author $author\n";
   print "Date $date\n";
@@ -40,31 +40,44 @@ Returns the revision number of the most recent revision as a scalar.
 
 =head2 info
 
-  info ($revision);
+  info (revision=>$revision);
 
-Perform the info command, for a given revision.
+Perform the info command, for a given revision or transaction using named parameters, or
+a single parameter will be assumed to mean revision for backwards compatability
 The information returned is an array containing author,date,and log message.
 If no $revision is specified, info for the youngest revision is returned.
 
+=head2 author
+
+  author (revision=>$revision);
+
+Perform the author command, for a given revision or transaction using named parameters or
+a single parameter will be assumed to mean revision for backwards compatability.
+The information returned is the author message.
+If no $revision or transaction is specified, author for the youngest revision is returned.
+
 =head2 dirschanged
 
-  dirschanged ($revision)
+  dirschanged (revision=>$revision)
 
-Performs the dirs-changed command, for a given revision.
+Performs the dirs-changed command, for a given revision or transaction using named parameters, or
+a single parameter will be assumed to mean revision for backwards compatability
 This method returns a boolean and am array reference
 
 =head2 fileschanged
 
-  fileschanged ($revision)
+  fileschanged (revision=>$revision)
 
-Performs the changed command, for a given revision.
+Performs the changed command, for a given revision or transaction using named parameters or
+a single parameter will be assumed to mean revision for backwards compatability
 this method returns 3 aray references Added,deleted and modified
 
 =head2 diff
 
-  diff ($revision)
+  diff (revision=>$revision)
 
-Performs the diff command, for a given revision.
+Performs the diff command, for a given revision or transaction using named parameters or
+a single parameter will be assumed to mean revision for backwards compatability
 this method returns a hash reference, with each file being the key and value being the diff info
 
 =cut
@@ -74,11 +87,8 @@ sub new {
     my $self = {}; 
     my $class = shift;
     %$self = @_;
-    # $class = ref($self) || $self;
     $self->{repo} ||= $self->{target};
     die "no repository specified" unless $self->{repo};
-    # die "no source specified" unless $self->{source} || $self->{get_source};
-    
     return bless $self, $class;
 }
 
@@ -86,38 +96,76 @@ sub youngest
 {
     my $self = shift;
     my ($rev) = _read_from_process($self->{cmd}, 'youngest', $self->{repo});
-    # might be nice to have
-    # $self->{rev} = $rev; 
     return $rev;
 }
 sub info
 {
     my $self = shift;
-    my $rev = shift;
-    my @svnlooklines;
-    if ( $rev) {
-        @svnlooklines = _read_from_process($self->{cmd}, 'info', $self->{repo}, '-r', $rev);
-    } else {
-        # print the youngest log message if no rev number is supplied
-        @svnlooklines = _read_from_process($self->{cmd}, 'info', $self->{repo});
+	my %args;
+    if ($#_ == 0)
+    {
+		$args{revision} = shift;
     }
+    else
+    {
+		%args = @_;
+    }
+    my @svnlooklines = _read_from_process(
+        $self->{cmd},
+        'info',
+        $self->{repo},
+        ($args{revision} ? ('-r', $args{revision}) : ()),
+        ($args{transaction} ? ('-t', $args{transaction}) : ()),
+    );
     my $author = shift @svnlooklines; # author of this change
     my $date = shift @svnlooklines; # date of change
     shift @svnlooklines; # log message size
-    #pop(@svnlooklines);
     my @log = map { "$_\n" } @svnlooklines;
     my $logmessage = join('',@log);
     return ($author,$date,$logmessage);
+}
+sub author
+{
+    my $self = shift;
+	my %args;
+    if ($#_ == 0)
+    {
+		$args{revision} = shift;
+    }
+    else
+    {
+		%args = @_;
+    }
+    my @svnlooklines = _read_from_process(
+        $self->{cmd},
+        'author',
+        $self->{repo},
+        ($args{revision} ? ('-r', $args{revision}) : ()),
+        ($args{transaction} ? ('-t', $args{transaction}) : ()),
+    );
+    return $svnlooklines[0]; # author of this change
 }
 
 sub dirschanged
 {
     my $self = shift;
-    my $rev = shift;
+	my %args;
+    if ($#_ == 0)
+    {
+		$args{revision} = shift;
+    }
+    else
+    {
+		%args = @_;
+    }
     # Figure out what directories have changed using svnlook.
-    my @dirschanged = _read_from_process($self->{cmd}, 'dirs-changed', $self->{repo},'-r', $rev);
-    # Lose the trailing slash in the directory names if one exists, except
-    # in the case of '/'.
+    my @dirschanged = _read_from_process(
+        $self->{cmd},
+        'dirs-changed',
+        $self->{repo},
+        ($args{revision} ? ('-r', $args{revision}) : ()),
+        ($args{transaction} ? ('-t', $args{transaction}) : ()),
+    );	
     my $rootchanged = 0;
     for (my $i=0; $i<@dirschanged; ++$i)
     {
@@ -137,10 +185,24 @@ sub dirschanged
 sub fileschanged
 {
     my $self = shift;
-    my $rev = shift;
+	my %args;
+    if ($#_ == 0)
+    {
+		$args{revision} = shift;
+    }
+    else
+    {
+		%args = @_;
+    }
 
     # Figure out what files have changed using svnlook.
-    my @svnlooklines = _read_from_process($self->{cmd}, 'changed', $self->{repo}, '-r', $rev);
+    my @svnlooklines = _read_from_process(
+        $self->{cmd},
+        'changed',
+        $self->{repo},
+        ($args{revision} ? ('-r', $args{revision}) : ()),
+        ($args{transaction} ? ('-t', $args{transaction}) : ()),
+    );
     # Parse the changed nodes.
     my @adds;
     my @dels;
@@ -176,10 +238,25 @@ sub fileschanged
 sub diff
 {
     my $self = shift;
-    my $rev = shift;
-    my @difflines = _read_from_process($self->{cmd}, 'diff', $self->{repo},'-r', $rev,
-                                       ('--no-diff-deleted'));
-    # Ok we need to split this out now , by file
+	my %args;
+    if ($#_ == 0)
+    {
+		$args{revision} = shift;
+    }
+    else
+    {
+		%args = @_;
+    }
+
+	my @difflines = _read_from_process(
+        $self->{cmd},
+        'diff',
+        $self->{repo},
+        ($args{revision} ? ('-r', $args{revision}) : ()),
+        ($args{transaction} ? ('-t', $args{transaction}) : ()),
+        ('--no-diff-deleted')
+    );
+	# Ok we need to split this out now , by file
     my @lin = split(/Modified: (.*)\n=*\n/,join("\n",@difflines));
     shift(@lin);
     my %lines = @lin;
