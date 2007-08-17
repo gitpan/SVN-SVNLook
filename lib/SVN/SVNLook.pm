@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use Carp qw(cluck);
 
-our $VERSION = 0.03;
+our $VERSION = 0.04;
 
 =head1 NAME
 
@@ -24,8 +24,8 @@ SVN::SVNLook - Perl wrapper to the svnlook command.
 
 =head1 DESCRIPTION
 
-SVN::SVNLook runs the command line client. This module was created to make adding
-hooks script easier to manipulate
+SVN::SVNLook runs the command line client. This module was created to
+make adding hooks script easier to manipulate.
 
 =cut
 
@@ -42,43 +42,48 @@ Returns the revision number of the most recent revision as a scalar.
 
   info (revision=>$revision);
 
-Perform the info command, for a given revision or transaction using named parameters, or
-a single parameter will be assumed to mean revision for backwards compatability
-The information returned is an array containing author,date,and log message.
-If no $revision is specified, info for the youngest revision is returned.
+Perform the info command, for a given revision or transaction using
+named parameters, or a single parameter will be assumed to mean
+revision for backwards compatibility. The information returned is an
+array containing author, date, and log message. If no $revision is
+specified, info for the youngest revision is returned.
 
 =head2 author
 
   author (revision=>$revision);
 
-Perform the author command, for a given revision or transaction using named parameters or
-a single parameter will be assumed to mean revision for backwards compatability.
-The information returned is the author message.
-If no $revision or transaction is specified, author for the youngest revision is returned.
+Perform the author command, for a given revision or transaction using
+named parameters or a single parameter will be assumed to mean
+revision for backwards compatibility. The information returned is the
+author message. If no $revision or transaction is specified, author
+for the youngest revision is returned.
 
 =head2 dirschanged
 
   dirschanged (revision=>$revision)
 
-Performs the dirs-changed command, for a given revision or transaction using named parameters, or
-a single parameter will be assumed to mean revision for backwards compatability
-This method returns a boolean and am array reference
+Performs the dirs-changed command, for a given revision or transaction
+using named parameters, or a single parameter will be assumed to mean
+revision for backwards compatibility. This method returns a boolean and
+an array reference.
 
 =head2 fileschanged
 
   fileschanged (revision=>$revision)
 
-Performs the changed command, for a given revision or transaction using named parameters or
-a single parameter will be assumed to mean revision for backwards compatability
-this method returns 3 aray references Added,deleted and modified
+Performs the changed command, for a given revision or transaction
+using named parameters or a single parameter will be assumed to mean
+revision for backwards compatibility this method returns 3 array
+references added, deleted and modified.
 
 =head2 diff
 
   diff (revision=>$revision)
 
-Performs the diff command, for a given revision or transaction using named parameters or
-a single parameter will be assumed to mean revision for backwards compatability
-this method returns a hash reference, with each file being the key and value being the diff info
+Performs the diff command, for a given revision or transaction using
+named parameters or a single parameter will be assumed to mean
+revision for backwards compatability this method returns a hash
+reference, with each file being the key and value being the diff info.
 
 =cut
 
